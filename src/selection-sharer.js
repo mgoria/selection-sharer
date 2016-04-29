@@ -16,8 +16,11 @@
     var self = this;
 
     options = options || {};
-    if(typeof options == 'string')
-        options = { elements: options };
+    if(typeof options == 'string') {
+      options = { elements: options };
+    }
+
+    var iframe = options.iframe || null;
 
     this.sel = null;
     this.textSelection='';
@@ -26,9 +29,29 @@
     this.appId = $('meta[property="fb:app_id"]').attr("content") || $('meta[property="fb:app_id"]').attr("value");
     this.url2share = $('meta[property="og:url"]').attr("content") || $('meta[property="og:url"]').attr("value") || window.location.href;
 
+    this.getSelection = function() {
+      var sel;
+
+      if (iframe) {
+        var win = iframe.contentWindow;
+        var doc = win.document;
+
+        if (win.getSelection) {
+          sel = win.getSelection();
+        } else if (doc.selection && doc.selection.createRange) {
+          sel = doc.selection;
+        }
+
+      } else {
+        sel = window.getSelection();
+      }
+
+      return sel;
+    };
+
     this.getSelectionText = function(sel) {
         var html = "", text = "";
-        sel = sel || window.getSelection();
+        sel = sel || self.getSelection();
         if (sel.rangeCount) {
             var container = document.createElement("div");
             for (var i = 0, len = sel.rangeCount; i < len; ++i) {
@@ -43,7 +66,7 @@
     };
 
     this.selectionDirection = function(selection) {
-      var sel = selection || window.getSelection();
+      var sel = selection || self.getSelection();
       var range = document.createRange();
       if(!sel.anchorNode) return 0;
       range.setStart(sel.anchorNode, sel.anchorOffset);
@@ -56,7 +79,7 @@
     this.showPopunder = function() {
       self.popunder = self.popunder || document.getElementById('selectionSharerPopunder');
 
-      var sel = window.getSelection();
+      var sel = self.getSelection();
       var selection = self.getSelectionText(sel);
 
       if(sel.isCollapsed || selection.length < 10 || !selection.match(/ /))
@@ -140,7 +163,7 @@
 
     this.show = function(e) {
       setTimeout(function() {
-        var sel = window.getSelection();
+        var sel = self.getSelection();
         var selection = self.getSelectionText(sel);
         if(!sel.isCollapsed && selection && selection.length>10 && selection.match(/ /)) {
           var range = sel.getRangeAt(0);
@@ -338,9 +361,9 @@
   };
 
   // jQuery plugin
-  // Usage: $( "p" ).selectionSharer();
-  $.fn.selectionSharer = function() {
-    var sharer = new SelectionSharer();
+  // Usage: $( "p" ).selectionSharer(options);
+  $.fn.selectionSharer = function(options) {
+    var sharer = new SelectionSharer(options);
     sharer.setElements(this);
     return this;
   };
@@ -351,7 +374,7 @@
   if(typeof define == 'function') {
     define(function() {
       SelectionSharer.load = function (name, req, onLoad, config) {
-        var sharer = new SelectionSharer();
+        var sharer = new SelectionSharer(config);
         sharer.setElements('p');
         onLoad();
       };
